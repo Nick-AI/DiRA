@@ -41,7 +41,8 @@ def get_encoder(name, in_channels=3, depth=5, weights=None):
     try:
         Encoder = encoders[name]["encoder"]
     except KeyError:
-        raise KeyError("Wrong encoder name `{}`, supported encoders: {}".format(name, list(encoders.keys())))
+        raise KeyError("Wrong encoder name `{}`, supported encoders: {}".format(
+            name, list(encoders.keys())))
 
     params = encoders[name]["params"]
     params.update(depth=depth)
@@ -55,26 +56,29 @@ def get_encoder(name, in_channels=3, depth=5, weights=None):
             else:
                 state_dict = checkpoint
 
-            state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
-            state_dict = {k.replace("encoder_q.", ""): v for k, v in state_dict.items()}
+            state_dict = {k.replace("module.", ""): v for k,
+                          v in state_dict.items()}
+            state_dict = {k.replace("encoder_q.", "")                          : v for k, v in state_dict.items()}
 
             for k in list(state_dict.keys()):
                 if k.startswith('fc') or k.startswith('classifier') or k.startswith('projection_head') or k.startswith('prototypes') or k.startswith('encoder_k') or k.startswith("queue"):
                     del state_dict[k]
-            encoder.load_state_dict(state_dict)
+            encoder.load_state_dict(state_dict, strict=False)
             print("=> loaded pre-trained model '{}'".format(weights))
         else:
             try:
                 settings = encoders[name]["pretrained_settings"][weights.lower()]
             except KeyError:
                 raise KeyError("Wrong pretrained weights `{}` for encoder `{}`. Available options are: {}".format(
-                    weights, name, list(encoders[name]["pretrained_settings"].keys()),
+                    weights, name, list(
+                        encoders[name]["pretrained_settings"].keys()),
                 ))
-            print ("settings url",settings["url"])
+            print("settings url", settings["url"])
             if settings["url"].startswith("http"):
                 encoder.load_state_dict(model_zoo.load_url(settings["url"]))
             else:
-                encoder.load_state_dict(torch.load(settings["url"], map_location='cpu'))
+                encoder.load_state_dict(torch.load(
+                    settings["url"], map_location='cpu'))
             print("=> loaded supervised ImageNet pre-trained model")
 
     encoder.set_in_channels(in_channels)
@@ -90,7 +94,8 @@ def get_preprocessing_params(encoder_name, pretrained="imagenet"):
     settings = encoders[encoder_name]["pretrained_settings"]
 
     if pretrained not in settings.keys():
-        raise ValueError("Available pretrained options {}".format(settings.keys()))
+        raise ValueError(
+            "Available pretrained options {}".format(settings.keys()))
 
     formatted_settings = {}
     formatted_settings["input_space"] = settings[pretrained].get("input_space")

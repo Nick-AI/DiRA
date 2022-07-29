@@ -10,28 +10,30 @@ from scipy import ndimage
 from torch.utils.data import Dataset
 import numpy as np
 
+
 class ChestX_ray14(Dataset):
 
-  def __init__(self, pathImageDirectory, pathDatasetFile, augment):
+    def __init__(self, pathImageDirectory, pathDatasetFile, augment):
 
-    self.img_list = []
-    self.augment = augment
+        self.img_list = []
+        self.augment = augment
 
-    with open(pathDatasetFile, "r") as fileDescriptor:
-      line = True
+        with open(pathDatasetFile, "r") as fileDescriptor:
+            line = True
 
-      while line:
-        line = fileDescriptor.readline()
+            while line:
+                line = fileDescriptor.readline()
 
-        if line:
-          lineItems = line.split()
-          imagePath = os.path.join(pathImageDirectory, lineItems[0])
-          self.img_list.append(imagePath)
+                if line:
+                    lineItems = line.split()
+                    imagePath = os.path.join(pathImageDirectory, lineItems[0])
+                    self.img_list.append(imagePath)
 
-  def __getitem__(self, index):
-    imagePath = self.img_list[index]
-    imageData = Image.open(imagePath).convert('RGB')
-    return self.augment(imageData)
+    def __getitem__(self, index):
+        imagePath = self.img_list[index]
+        image_data = np.load(imagePath)
+        image_data = torch.from_numpy(image_data)
+        return self.augment(image_data)
 
-  def __len__(self):
-    return len(self.img_list)
+    def __len__(self):
+        return len(self.img_list)

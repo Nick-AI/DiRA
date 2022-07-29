@@ -39,6 +39,7 @@ class ResNetEncoder(ResNet, EncoderMixin):
         super().__init__(**kwargs)
         self._depth = depth
         self._out_channels = out_channels
+        # manually changed to 6 in _base.EncoderMixin (parent class):
         self._in_channels = 3
 
         del self.fc
@@ -70,8 +71,8 @@ class ResNetEncoder(ResNet, EncoderMixin):
             state_dict.pop("fc.weight")
         except:
             pass
-        msg=super().load_state_dict(state_dict, **kwargs)
-        print (msg)
+        msg = super().load_state_dict(state_dict, **kwargs)
+        print(msg)
         print("missing keys:", msg.missing_keys)
 
 

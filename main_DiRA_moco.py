@@ -1,5 +1,6 @@
 import argparse
 import builtins
+from http.client import NOT_IMPLEMENTED
 import math
 import os
 import random
@@ -21,13 +22,13 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 from data_loader import ChestX_ray14
 import transformation
-from DiRA_models import DiRA_UNet,DiRA_MoCo,MoCo,Discriminator,weights_init_normal
-from trainer import train_dir,validate_dir,train_dira,validate_dira
+from DiRA_models import DiRA_UNet, DiRA_MoCo, MoCo, Discriminator, weights_init_normal
+from trainer import train_dir, validate_dir, train_dira, validate_dira
 from torch.autograd import Variable
 
 model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+                     if name.islower() and not name.startswith("__")
+                     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ChestX-ray14 Training')
 parser.add_argument('data', metavar='DIR',
@@ -35,8 +36,8 @@ parser.add_argument('data', metavar='DIR',
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet50)')
+                    ' | '.join(model_names) +
+                    ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                     help='number of data loading workers (default: 16)')
 parser.add_argument('--epochs', default=1000, type=int, metavar='N',
@@ -94,27 +95,36 @@ parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
-parser.add_argument('--checkpoint-dir', default='./checkpoint/', type=str, help='path to checkpoint directory')
+parser.add_argument('--checkpoint-dir', default='./checkpoint/',
+                    type=str, help='path to checkpoint directory')
 parser.add_argument('--train_list', default='dataset/Xray14_train_official.txt', type=str,
-                     help='file for training list')
+                    help='file for training list')
 parser.add_argument('--val_list', default='dataset/Xray14_val_official.txt', type=str,
-                     help='file for validation list')
+                    help='file for validation list')
 parser.add_argument('--mode', default='dira', type=str,
-                     help='di|dir|dira')
-parser.add_argument('--encoder_weights', default=None, type=str,help='encoder pre-trained weights if available')
-parser.add_argument('--activate', default="sigmoid", type=str,help='activation for reconstruction')
-parser.add_argument('--contrastive_weight', default=1, type=float,help='weight of instance discrimination loss')
-parser.add_argument('--mse_weight', default=10, type=float,help='weight of reconstruction loss')
-parser.add_argument('--adv_weight', default=0.001, type=float,help='weight of adversarial loss')
-parser.add_argument('--exp_name', default="DiRA_moco", type=str,help='experiment name')
-parser.add_argument('--out_channels', default=1, type=str,help='number of channels in generator output')
-parser.add_argument('--generator_pre_trained_weights', default=None, type=str,help='generator pre-trained weights')
-
+                    help='di|dir|dira')
+parser.add_argument('--encoder_weights', default=None,
+                    type=str, help='encoder pre-trained weights if available')
+parser.add_argument('--activate', default="sigmoid",
+                    type=str, help='activation for reconstruction')
+parser.add_argument('--contrastive_weight', default=1,
+                    type=float, help='weight of instance discrimination loss')
+parser.add_argument('--mse_weight', default=10, type=float,
+                    help='weight of reconstruction loss')
+parser.add_argument('--adv_weight', default=0.001,
+                    type=float, help='weight of adversarial loss')
+parser.add_argument('--exp_name', default="DiRA_moco",
+                    type=str, help='experiment name')
+parser.add_argument('--out_channels', default=6, type=str,
+                    help='number of channels in generator output')
+parser.add_argument('--generator_pre_trained_weights',
+                    default=None, type=str, help='generator pre-trained weights')
 
 
 def main():
     args = parser.parse_args()
-    args.checkpoint_dir = os.path.join(args.checkpoint_dir,args.exp_name,args.mode)
+    args.checkpoint_dir = os.path.join(
+        args.checkpoint_dir, args.exp_name, args.mode)
     if not os.path.exists(args.checkpoint_dir):
         os.makedirs(args.checkpoint_dir)
 
@@ -144,7 +154,8 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
+        mp.spawn(main_worker, nprocs=ngpus_per_node,
+                 args=(ngpus_per_node, args))
     else:
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
@@ -174,18 +185,22 @@ def main_worker(gpu, ngpus_per_node, args):
 
     D_output_shape = (1, 28, 28)
     # create model
-    if args.mode.lower() == "di": #discriminator only
-        model = MoCo(models.__dict__[args.arch],args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
+    if args.mode.lower() == "di":  # discriminator only
+        raise NotImplementedError('Only supported mode is DiRA')
+        model = MoCo(models.__dict__[args.arch], args.moco_dim,
+                     args.moco_k, args.moco_m, args.moco_t, args.mlp)
     else:
-        model = DiRA_MoCo(DiRA_UNet, args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp, backbone=args.arch, encoder_weights=args.encoder_weights, activation=args.activate)
+        model = DiRA_MoCo(DiRA_UNet, args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp,
+                          backbone=args.arch, encoder_weights=args.encoder_weights, activation=args.activate)
     print(model)
     discriminator = Discriminator(args.out_channels)
     discriminator.apply(weights_init_normal)
     print(discriminator)
 
     if args.generator_pre_trained_weights is not None:
-        print ("Loading pre-trained weights for generator...")
-        ckpt = torch.load(args.generator_pre_trained_weights, map_location='cpu')
+        print("Loading pre-trained weights for generator...")
+        ckpt = torch.load(args.generator_pre_trained_weights,
+                          map_location='cpu')
         if "state_dict" in ckpt:
             ckpt = ckpt['state_dict']
         ckpt = {k.replace("module.", ""): v for k, v in ckpt.items()}
@@ -205,16 +220,20 @@ def main_worker(gpu, ngpus_per_node, args):
             # DistributedDataParallel, we need to divide the batch size
             # ourselves based on the total number of GPUs we have
             args.batch_size = int(args.batch_size / ngpus_per_node)
-            args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-            discriminator = torch.nn.parallel.DistributedDataParallel(discriminator, device_ids=[args.gpu])
+            args.workers = int(
+                (args.workers + ngpus_per_node - 1) / ngpus_per_node)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[args.gpu])
+            discriminator = torch.nn.parallel.DistributedDataParallel(
+                discriminator, device_ids=[args.gpu])
         else:
             model.cuda()
             discriminator.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model)
-            discriminator = torch.nn.parallel.DistributedDataParallel(discriminator)
+            discriminator = torch.nn.parallel.DistributedDataParallel(
+                discriminator)
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
@@ -234,10 +253,9 @@ def main_worker(gpu, ngpus_per_node, args):
                                 weight_decay=args.weight_decay)
 
     optimizer_D = torch.optim.Adam(
-                    params=discriminator.parameters(),
-                    lr=args.disc_learning_rate,
-                    betas=[0.5, 0.999]) #set from inpainting paper)
-
+        params=discriminator.parameters(),
+        lr=args.disc_learning_rate,
+        betas=[0.5, 0.999])  # set from inpainting paper)
 
     best_loss = 10000000000
     cudnn.benchmark = True
@@ -247,15 +265,15 @@ def main_worker(gpu, ngpus_per_node, args):
     dataset_valid = ChestX_ray14(pathImageDirectory=args.data, pathDatasetFile=args.val_list,
                                  augment=transformation.Transform(mode=args.mode))
 
-
     if args.distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(dataset_train)
-        valid_sampler = torch.utils.data.distributed.DistributedSampler(dataset_valid)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset_train)
+        valid_sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset_valid)
 
     else:
         train_sampler = None
         valid_sampler = None
-
 
     train_loader = torch.utils.data.DataLoader(
         dataset_train, batch_size=args.batch_size, num_workers=args.workers,
@@ -272,50 +290,57 @@ def main_worker(gpu, ngpus_per_node, args):
 
         # train for one epoch
         if args.mode.lower() == "di" or args.mode.lower() == "dir":
-            train_dir(train_loader, model, nce_criterion, mse_criterion, optimizer, epoch, args)
-            counter = validate_dir(valid_loader, model, nce_criterion, mse_criterion, epoch, args)
-        elif args.mode.lower() =="dira":
-            train_dira(train_loader, model, nce_criterion, mse_criterion, adversarial_criterion, optimizer, epoch,args, discriminator, optimizer_D, D_output_shape)
-            counter = validate_dira(valid_loader, model, nce_criterion, mse_criterion, adversarial_criterion, epoch,args, discriminator, D_output_shape)
+            train_dir(train_loader, model, nce_criterion,
+                      mse_criterion, optimizer, epoch, args)
+            counter = validate_dir(valid_loader, model,
+                                   nce_criterion, mse_criterion, epoch, args)
+        elif args.mode.lower() == "dira":
+            train_dira(train_loader, model, nce_criterion, mse_criterion, adversarial_criterion,
+                       optimizer, epoch, args, discriminator, optimizer_D, D_output_shape)
+            counter = validate_dira(valid_loader, model, nce_criterion, mse_criterion,
+                                    adversarial_criterion, epoch, args, discriminator, D_output_shape)
 
         torch.distributed.reduce(counter, 0)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
+                                                    and args.rank % ngpus_per_node == 0):
 
             valid_loss = counter[0]/counter[1]
-            print ("validation loss: ",valid_loss)
+            print("validation loss: ", valid_loss)
             if valid_loss < best_loss:
-                print("Epoch {:04d}: val_loss improved from {:.5f} to {:.5f}".format(epoch, best_loss, valid_loss))
+                print("Epoch {:04d}: val_loss improved from {:.5f} to {:.5f}".format(
+                    epoch, best_loss, valid_loss))
                 best_loss = valid_loss
                 if args.mode.lower() == "di":
-                    torch.save(model.module.encoder_q.state_dict(), os.path.join(args.checkpoint_dir, 'best_checkpoint.pth'))
+                    torch.save(model.module.encoder_q.state_dict(), os.path.join(
+                        args.checkpoint_dir, 'best_checkpoint.pth'))
                 else:
-                    torch.save(model.module.encoder_q.backbone.state_dict(), os.path.join(args.checkpoint_dir,'best_checkpoint.pth'))
+                    torch.save(model.module.encoder_q.backbone.state_dict(), os.path.join(
+                        args.checkpoint_dir, 'best_checkpoint.pth'))
 
             torch.save({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
-                'optimizer' : optimizer.state_dict(),
-                'best_loss':best_loss
-            }, os.path.join(args.checkpoint_dir,'checkpoint.pth'))
+                'optimizer': optimizer.state_dict(),
+                'best_loss': best_loss
+            }, os.path.join(args.checkpoint_dir, 'checkpoint.pth'))
 
             if args.mode.lower() == "dira":
                 torch.save({
                     'epoch': epoch + 1,
                     'arch': args.arch,
                     'state_dict': discriminator.state_dict(),
-                    'optimizer' : optimizer_D.state_dict(),
-                }, os.path.join(args.checkpoint_dir,'D_checkpoint.pth'))
-
+                    'optimizer': optimizer_D.state_dict(),
+                }, os.path.join(args.checkpoint_dir, 'D_checkpoint.pth'))
 
     if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
         if args.mode.lower() == "di":
-            torch.save(model.module.encoder_q.state_dict(), os.path.join(args.checkpoint_dir, 'resnet50.pth'))
+            torch.save(model.module.encoder_q.state_dict(),
+                       os.path.join(args.checkpoint_dir, 'resnet50.pth'))
         else:
             torch.save(model.module.encoder_q.backbone.state_dict(),
-                   os.path.join(args.checkpoint_dir,'unet.pth'))
+                       os.path.join(args.checkpoint_dir, 'unet.pth'))
 
 
 def adjust_learning_rate(optimizer, epoch, args):
@@ -328,6 +353,7 @@ def adjust_learning_rate(optimizer, epoch, args):
             lr *= 0.1 if epoch >= milestone else 1.
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
 
 if __name__ == '__main__':
     main()

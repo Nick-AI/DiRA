@@ -8,6 +8,7 @@ class MoCo(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
+
     def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=False):
         """
         dim: feature dimension (default: 128)
@@ -28,8 +29,10 @@ class MoCo(nn.Module):
 
         if mlp:  # hack: brute-force replacement
             dim_mlp = self.encoder_q.fc.weight.shape[1]
-            self.encoder_q.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
-            self.encoder_k.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
+            self.encoder_q.fc = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
+            self.encoder_k.fc = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -159,11 +162,13 @@ class MoCo(nn.Module):
 
         return logits, labels
 
+
 class DiRA_MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
+
     def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=False, backbone="resnet50", encoder_weights=None, activation=None):
         """
         dim: feature dimension (default: 128)
@@ -179,13 +184,17 @@ class DiRA_MoCo(nn.Module):
 
         # create backbones (U-Net)
         # num_classes is the output fc dimension
-        self.encoder_q = base_encoder(backbone, encoder_weights, activation,num_classes=dim)
-        self.encoder_k = base_encoder(backbone, encoder_weights, activation,num_classes=dim)
+        self.encoder_q = base_encoder(
+            backbone, encoder_weights, activation, num_classes=dim)
+        self.encoder_k = base_encoder(
+            backbone, encoder_weights, activation, num_classes=dim)
 
         if mlp:
             dim_mlp = self.encoder_q.fc.weight.shape[1]
-            self.encoder_q.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
-            self.encoder_k.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
+            self.encoder_q.fc = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
+            self.encoder_k.fc = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -288,7 +297,7 @@ class DiRA_MoCo(nn.Module):
             # shuffle for making use of BN
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            k,_ = self.encoder_k(im_k)  # keys: NxC
+            k, _ = self.encoder_k(im_k)  # keys: NxC
             k = nn.functional.normalize(k, dim=1)
 
             # undo shuffle
@@ -313,7 +322,7 @@ class DiRA_MoCo(nn.Module):
         # dequeue and enqueue
         self._dequeue_and_enqueue(k)
 
-        return logits, labels,rec_output
+        return logits, labels, rec_output
 
 
 # utils
@@ -324,7 +333,7 @@ def concat_all_gather(tensor):
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
     tensors_gather = [torch.ones_like(tensor)
-        for _ in range(torch.distributed.get_world_size())]
+                      for _ in range(torch.distributed.get_world_size())]
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
 
     output = torch.cat(tensors_gather, dim=0)
@@ -332,10 +341,11 @@ def concat_all_gather(tensor):
 
 
 class DiRA_UNet(nn.Module):
-    def __init__(self, backbone, encoder_weights=None, activation=None,num_classes=1000):
+    def __init__(self, backbone, encoder_weights=None, activation=None, num_classes=1000):
         super(DiRA_UNet, self).__init__()
 
-        self.backbone = smp.Unet(backbone, encoder_weights=encoder_weights, activation=activation)
+        self.backbone = smp.Unet(
+            backbone, encoder_weights=encoder_weights, activation=activation, in_channels=6)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         latent = 2048
@@ -343,14 +353,16 @@ class DiRA_UNet(nn.Module):
 
     def forward(self, x):
         features = self.backbone.encoder(x)
+        # might have to change channel number in there somewhere
         decoder_output = self.backbone.decoder(*features)
         masks = self.backbone.segmentation_head(decoder_output)
 
-        f=self.avgpool(features[-1])
-        f = torch.flatten(f,1)
+        f = self.avgpool(features[-1])
+        f = torch.flatten(f, 1)
         f = self.fc(f)
 
         return f, masks
+
 
 class Discriminator(nn.Module):
     def __init__(self, channels=1):
@@ -367,7 +379,8 @@ class Discriminator(nn.Module):
         layers = []
         in_filters = channels
         for out_filters, stride, normalize in [(64, 2, False), (128, 2, True), (256, 2, True), (512, 1, True)]:
-            layers.extend(discriminator_block(in_filters, out_filters, stride, normalize))
+            layers.extend(discriminator_block(
+                in_filters, out_filters, stride, normalize))
             in_filters = out_filters
 
         layers.append(nn.Conv2d(out_filters, 1, 3, 1, 1))
@@ -376,6 +389,7 @@ class Discriminator(nn.Module):
 
     def forward(self, img):
         return self.model(img)
+
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
