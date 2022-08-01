@@ -89,11 +89,10 @@ class Transform:
             transforms.RandomHorizontalFlip()])
         self.reconstruction_transform = transforms.Compose([
             Custom_Distoration(224, 224),
-            transforms.ToTensor(),
         ])
-        self.to_tensor = transforms.Compose([
-            transforms.ToTensor()
-        ])
+        # self.to_tensor = transforms.Compose([
+        #     transforms.ToTensor()
+        # ])
 
     def __call__(self, x):
         y1_orig = self.crop_transform(x)
@@ -101,8 +100,8 @@ class Transform:
         y1 = self.transform(y1_orig)
         y2 = self.transform(y2_orig)
         if self.mode.lower() == 'di':
-            y1 = self.to_tensor(y1)
-            y2 = self.to_tensor(y2)
+            # y1 = self.to_tensor(y1)
+            # y2 = self.to_tensor(y2)
             return [y1, y2]
         else:
             y1 = self.reconstruction_transform(y1)
