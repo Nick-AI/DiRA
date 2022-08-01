@@ -74,7 +74,7 @@ class Custom_Distoration(object):
                                                                              noise_y2:noise_y2 + block_noise_size_y]
                 org_img[:, noise_x2:noise_x2 + block_noise_size_x,
                         noise_y2:noise_y2 + block_noise_size_y] = image_temp[:, noise_x1:noise_x1 + block_noise_size_x,
-                                                                             noise_y1:noise_y1 + block_noise_size_y, :]
+                                                                             noise_y1:noise_y1 + block_noise_size_y]
                 cnt = cnt - 1
         return torch.from_numpy(org_img)
 
