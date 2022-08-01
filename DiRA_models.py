@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
-import segmentation_models_pytorch as smp
+try:
+    from . import segmentation_models_pytorch as smp
+except ImportError:
+    import segmentation_models_pytorch as smp
 
 
 class MoCo(nn.Module):
