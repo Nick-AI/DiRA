@@ -33,6 +33,7 @@ class ChestX_ray14(Dataset):
         imagePath = self.img_list[index]
         image_data = np.load(imagePath).astype(np.float32)
         image_data = np.moveaxis(image_data, -1, 0)
+        image_data /= image_data.max()
         image_data = torch.from_numpy(image_data)
         return self.augment(image_data)
 

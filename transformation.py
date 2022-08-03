@@ -83,6 +83,7 @@ class Transform:
     def __init__(self, mode):
         self.mode = mode
         self.crop_transform = transforms.Compose([
+            transforms.Pad(padding=(0,0,115,74), fill=0),
             transforms.RandomResizedCrop(224, scale=(0.2, 1.))])
         self.transform = transforms.Compose([
             transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
@@ -106,5 +107,5 @@ class Transform:
         else:
             y1 = self.reconstruction_transform(y1)
             y2 = self.reconstruction_transform(y2)
-            y1_orig_1c = np.array(y1_orig) / 255.0
+            y1_orig_1c = np.array(y1_orig)
             return [y1, y2, y1_orig_1c]
